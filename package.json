@@ -1,0 +1,8 @@
+{
+  "name": "lippu-subdomains",
+  "version": "1.0.0",
+  "description": "Event subdomain manager with Open Graph tags for lippu.app",
+  "engines": {
+    "node": ">=18"
+  }
+}
