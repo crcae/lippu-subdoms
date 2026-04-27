@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/$1" }
+    { "source": "/admin",  "destination": "/admin/index.html" },
+    { "source": "/admin/", "destination": "/admin/index.html" },
+    { "source": "/",       "destination": "/api/event" },
+    { "source": "/((?!admin|api).+)", "destination": "/api/event?slug=$1" }
   ]
 }

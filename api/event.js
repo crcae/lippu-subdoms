@@ -10,10 +10,10 @@ function escapeHtml(str) {
 
 function buildHtml(event) {
   const title = escapeHtml(event.title);
-  const description = escapeHtml(event.description);
-  const image = escapeHtml(event.image);
+  const description = escapeHtml(event.description || '');
+  const image = escapeHtml(event.image || '');
   const url = escapeHtml(event.url);
-  const canonical = `https://${escapeHtml(event.subdomain)}.lippu.app/`;
+  const canonical = `https://${escapeHtml(event.subdomain || event.slug)}.lippu.app/`;
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -22,8 +22,6 @@ function buildHtml(event) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <meta name="description" content="${description}">
-
-  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="${canonical}">
   <meta property="og:title" content="${title}">
@@ -31,14 +29,10 @@ function buildHtml(event) {
   <meta property="og:image" content="${image}">
   ${event.imageWidth ? `<meta property="og:image:width" content="${event.imageWidth}">` : ''}
   ${event.imageHeight ? `<meta property="og:image:height" content="${event.imageHeight}">` : ''}
-
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
   <meta name="twitter:image" content="${image}">
-
-  <!-- Redirect -->
   <meta http-equiv="refresh" content="0; url=${url}">
   <link rel="canonical" href="${url}">
 </head>
@@ -50,24 +44,31 @@ function buildHtml(event) {
 }
 
 module.exports = function handler(req, res) {
-  const slug = req.query.slug;
+  // Slug can come from path (/tfs69experience) or from subdomain host header
+  let slug = req.query.slug || '';
+
+  if (!slug) {
+    // Extract subdomain: "tfs69experience.lippu.app" → "tfs69experience"
+    const host = req.headers.host || '';
+    const parts = host.split('.');
+    // Only for custom domains (3+ parts), not for vercel.app or localhost
+    if (parts.length >= 3 && !host.includes('vercel.app') && !host.includes('localhost')) {
+      slug = parts[0];
+    }
+  }
 
   if (!slug || slug === 'favicon.ico') {
-    res.status(404).end('Not found');
-    return;
+    return res.status(404).end('Not found');
   }
 
   const event = events.find(e => e.slug === slug);
 
   if (!event) {
-    res.status(404).send(`<!DOCTYPE html>
+    return res.status(404).send(`<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><title>Evento no encontrado</title></head>
-<body>
-  <p>Este evento no existe. <a href="https://lippu.app">Volver a lippu.app</a></p>
-</body>
+<body><p>Este evento no existe. <a href="https://lippu.app">Volver a lippu.app</a></p></body>
 </html>`);
-    return;
   }
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

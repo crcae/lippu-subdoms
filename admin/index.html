@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — lippu.app Subdominios</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --border: #252525;
+      --text: #f0f0f0;
+      --muted: #666;
+      --muted2: #999;
+      --accent: #6366f1;
+      --accent-h: #5254cc;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warn: #eab308;
+      --mono: 'SF Mono','Fira Code','Cascadia Mono',monospace;
+      --radius: 10px;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+    /* ── Gate ─────────────────────────────────────────────────────────── */
+    #gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .gate-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 360px; }
+    .gate-logo { font-size: 13px; font-family: var(--mono); color: var(--muted2); margin-bottom: 4px; }
+    .gate-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .gate-sub { color: var(--muted2); font-size: 13px; margin-bottom: 28px; }
+    .gate-error { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    #app { display: none; }
+    header { border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 12px; }
+    .header-logo { font-family: var(--mono); font-size: 13px; color: var(--muted2); }
+    .header-title { font-size: 14px; font-weight: 600; flex: 1; }
+    main { padding: 28px; max-width: 1100px; }
+    .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .top-bar h2 { font-size: 18px; font-weight: 600; }
+    .top-bar p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: var(--accent-h); }
+    .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border); }
+    .btn-ghost:not(:disabled):hover { color: var(--text); border-color: #3a3a3a; }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
+    .btn-danger:not(:disabled):hover { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+    /* ── Forms ────────────────────────────────────────────────────────── */
+    .input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 13px; border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s; }
+    .input:focus { border-color: var(--accent); }
+    .input::placeholder { color: var(--muted); }
+    .input.mono { font-family: var(--mono); }
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    .fg { margin-bottom: 14px; }
+    .row2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .slug-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .slug-suffix { font-size: 12px; color: var(--muted); white-space: nowrap; padding-bottom: 10px; }
+
+    /* ── Table ────────────────────────────────────────────────────────── */
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; background: var(--surface); border-bottom: 1px solid var(--border); }
+    td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.015); }
+    .mono-cell { font-family: var(--mono); font-size: 12px; }
+    .subdomain-link { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 12px; }
+    .subdomain-link:hover { text-decoration: underline; }
+    .url-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .actions-cell { display: flex; gap: 6px; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: rgba(34,197,94,.12); color: var(--success); }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty p { margin-bottom: 16px; }
+
+    /* ── Modal ────────────────────────────────────────────────────────── */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px 60px; z-index: 100; overflow-y: auto; backdrop-filter: blur(2px); }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 940px; display: grid; grid-template-columns: 1fr 380px; overflow: hidden; }
+    .modal-body { padding: 28px 28px 24px; }
+    .modal-side { padding: 28px 24px; background: var(--bg); border-left: 1px solid var(--border); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 6px; }
+    .modal-footer .btn { flex: 1; justify-content: center; }
+    .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: var(--mono); font-size: 12px; margin-top: 14px; }
+    .ri { display: flex; gap: 8px; margin-bottom: 4px; line-height: 1.4; }
+    .ri:last-child { margin-bottom: 0; }
+    .ok-c { color: var(--success); } .err-c { color: var(--danger); } .skip-c { color: var(--muted); }
+    .note { font-size: 12px; color: var(--muted2); margin-top: 10px; line-height: 1.6; }
+
+    /* ── WhatsApp preview ─────────────────────────────────────────────── */
+    .wa-bg { background: #0b141a; border-radius: 10px; padding: 14px; }
+    .wa-bubble { background: #1f2c34; border-radius: 8px; overflow: hidden; max-width: 260px; }
+    .wa-img-wrap { width: 100%; height: 138px; background: #2a3942; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 12px; }
+    .wa-img { width: 100%; height: 138px; object-fit: cover; display: block; }
+    .wa-meta { padding: 9px 11px 11px; }
+    .wa-domain { font-size: 11px; color: #8696a0; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+    .wa-title { font-size: 13px; font-weight: 600; color: #e9edef; margin-bottom: 3px; line-height: 1.3; }
+    .wa-desc { font-size: 12px; color: #8696a0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .propagation-note { margin-top: 20px; }
+    .propagation-note ul { font-size: 12px; color: var(--muted2); line-height: 1.9; padding-left: 14px; }
+    .propagation-note a { color: var(--accent); }
+
+    /* ── Toast ────────────────────────────────────────────────────────── */
+    #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; font-size: 13px; min-width: 260px; display: flex; align-items: center; gap: 9px; animation: tin .2s ease; }
+    .toast-ok { border-color: rgba(34,197,94,.4); }
+    .toast-err { border-color: rgba(239,68,68,.4); }
+    @keyframes tin { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Spinner ──────────────────────────────────────────────────────── */
+    .spin { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: rot .6s linear infinite; flex-shrink: 0; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── Gate ─────────────────────────────────────────────────────────────── -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">lippu.app</div>
+    <div class="gate-title">Admin</div>
+    <div class="gate-sub">Gestión de subdominios y eventos</div>
+    <div class="fg">
+      <label>Contraseña</label>
+      <input type="password" id="pw" class="input" placeholder="••••••••" autofocus>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="login()">Entrar</button>
+    <div class="gate-error" id="pw-err">Contraseña incorrecta</div>
+  </div>
+</div>
+
+<!-- ── App ──────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <header>
+    <span class="header-logo">lippu.app</span>
+    <span style="color:var(--border)">／</span>
+    <span class="header-title">Subdominios</span>
+    <button class="btn btn-ghost btn-sm" onclick="reload()">↺ Recargar</button>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Salir</button>
+  </header>
+
+  <main>
+    <div class="top-bar">
+      <div>
+        <h2>Eventos activos</h2>
+        <p id="events-meta"></p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Nuevo evento</button>
+    </div>
+    <div id="events-area"><div class="empty"><p>Cargando…</p></div></div>
+  </main>
+</div>
+
+<!-- ── Modal ────────────────────────────────────────────────────────────── -->
+<div class="overlay" id="modal" style="display:none" onclick="overlayClick(event)">
+  <div class="modal">
+
+    <div class="modal-body">
+      <div class="modal-header">
+        <div class="modal-title">Nuevo evento</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+      </div>
+
+      <div class="fg">
+        <label>URL del evento en lippu.app</label>
+        <div class="row2">
+          <input type="url" id="f-src" class="input" placeholder="https://lippu.app/eventwa/...">
+          <button class="btn btn-ghost" id="extract-btn" onclick="extractOG()">Extraer OG</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Subdominio</label>
+        <div class="slug-row">
+          <input type="text" id="f-slug" class="input mono" placeholder="nombre-evento" oninput="onFormChange()">
+          <span class="slug-suffix">.lippu.app</span>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Título</label>
+        <input type="text" id="f-title" class="input" placeholder="Nombre del evento" oninput="onFormChange()">
+      </div>
+
+      <div class="fg">
+        <label>Descripción</label>
+        <input type="text" id="f-desc" class="input" placeholder="Descripción breve para preview" oninput="onFormChange()">
+      </div>
+
+      <div class="fg">
+        <label>URL imagen OG <span style="font-weight:400;text-transform:none;letter-spacing:0">(recomendado 1200×630 px, accesible públicamente)</span></label>
+        <input type="url" id="f-img" class="input mono" placeholder="https://…" oninput="onFormChange()">
+      </div>
+
+      <div id="modal-result" style="display:none"></div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" id="create-btn" onclick="createEvent()">Crear evento</button>
+      </div>
+    </div>
+
+    <div class="modal-side">
+      <div class="section-label">Preview WhatsApp</div>
+      <div class="wa-bg">
+        <div class="wa-bubble">
+          <div id="prev-img"><div class="wa-img-wrap">Sin imagen</div></div>
+          <div class="wa-meta">
+            <div class="wa-domain" id="prev-domain">subdominio.lippu.app</div>
+            <div class="wa-title" id="prev-title">Título del evento</div>
+            <div class="wa-desc" id="prev-desc">La descripción aparece aquí…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="propagation-note">
+        <div class="section-label" style="margin-top:20px;margin-bottom:8px">Tiempos de propagación</div>
+        <ul>
+          <li>CNAME GoDaddy — 1 a 5 min</li>
+          <li>SSL Vercel — 1 a 2 min</li>
+          <li>Redeploy Vercel — 1 a 2 min</li>
+          <li>Cache WhatsApp — hasta 24 h<br>
+            <a href="https://developers.facebook.com/tools/debug/" target="_blank">→ Forzar re-scrape (Facebook Debugger)</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const BASE = '';  // mismo origen
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getPw() { return sessionStorage.getItem('lp_pw') || ''; }
+
+async function login() {
+  const pw = document.getElementById('pw').value;
+  if (!pw) return;
+  try {
+    const r = await fetch(`${BASE}/api/manage`, { headers: { 'x-admin-password': pw } });
+    if (r.ok) {
+      sessionStorage.setItem('lp_pw', pw);
+      document.getElementById('pw-err').style.display = 'none';
+      showApp();
+    } else {
+      document.getElementById('pw-err').style.display = 'block';
+    }
+  } catch {
+    document.getElementById('pw-err').style.display = 'block';
+  }
+}
+
+function logout() { sessionStorage.removeItem('lp_pw'); location.reload(); }
+
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (getPw()) showApp();
+});
+
+function showApp() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadEvents();
+}
+
+// ── Events list ───────────────────────────────────────────────────────────────
+let events = [];
+
+async function loadEvents() {
+  const area = document.getElementById('events-area');
+  area.innerHTML = '<div class="empty"><p>Cargando…</p></div>';
+  try {
+    const r = await fetch(`${BASE}/api/manage`, { headers: { 'x-admin-password': getPw() } });
+    if (r.status === 401) { logout(); return; }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    events = await r.json();
+    renderEvents();
+    document.getElementById('events-meta').textContent =
+      `${events.length} evento${events.length !== 1 ? 's' : ''} — lista del último deploy`;
+  } catch (err) {
+    area.innerHTML = `<div class="empty"><p style="color:var(--danger)">Error cargando eventos: ${err.message}</p></div>`;
+  }
+}
+
+function reload() { loadEvents(); }
+
+function renderEvents() {
+  const area = document.getElementById('events-area');
+  if (!events.length) {
+    area.innerHTML = `
+      <div class="empty">
+        <p>No hay eventos configurados.</p>
+        <button class="btn btn-primary" onclick="openModal()">+ Crear primer evento</button>
+      </div>`;
+    return;
+  }
+  area.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Subdominio</th>
+          <th>Título</th>
+          <th>URL destino</th>
+          <th>Status</th>
+          <th>Acciones</th>
+        </tr></thead>
+        <tbody>
+          ${events.map((e, i) => `
+            <tr>
+              <td><a href="https://${e.slug}.lippu.app" target="_blank" class="subdomain-link">${e.slug}.lippu.app ↗</a></td>
+              <td>${esc(e.title)}</td>
+              <td><span class="url-cell" title="${esc(e.url)}">${esc(e.url)}</span></td>
+              <td><span class="badge badge-ok"><span class="dot"></span>Activo</span></td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-ghost btn-sm" onclick="copyLink(${i})">Copiar link</button>
+                  <button class="btn btn-danger btn-sm" onclick="delEvent(${i})">Eliminar</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copyLink(i) {
+  const url = `https://${events[i].slug}.lippu.app`;
+  navigator.clipboard.writeText(url).then(() => toast('ok', `Copiado: ${url}`));
+}
+
+async function delEvent(i) {
+  const e = events[i];
+  if (!confirm(`¿Eliminar el evento "${e.title}"?\n\nEsto actualiza events.json vía GitHub y triggerea un redeploy.\nEl CNAME en GoDaddy deberás eliminarlo manualmente.`)) return;
+  try {
+    const r = await fetch(`${BASE}/api/manage?slug=${e.slug}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-password': getPw() },
+    });
+    const d = await r.json();
+    if (r.ok) {
+      toast('ok', `"${e.slug}" eliminado — redeploy en ~1 min`);
+      events.splice(i, 1);
+      renderEvents();
+    } else {
+      toast('err', d.error || 'Error al eliminar');
+    }
+  } catch (err) {
+    toast('err', err.message);
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal() {
+  resetModal();
+  document.getElementById('modal').style.display = 'flex';
+  document.getElementById('f-src').focus();
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+function overlayClick(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+
+function resetModal() {
+  ['f-src','f-slug','f-title','f-desc','f-img'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('modal-result').style.display = 'none';
+  const btn = document.getElementById('create-btn');
+  btn.disabled = false; btn.textContent = 'Crear evento';
+  updatePreview();
+}
+
+// ── OG extraction ─────────────────────────────────────────────────────────────
+async function extractOG() {
+  const url = document.getElementById('f-src').value.trim();
+  if (!url) { toast('err', 'Pega la URL del evento primero'); return; }
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await fetch(`${BASE}/api/fetch-meta?url=${encodeURIComponent(url)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const m = await r.json();
+    if (m.title)       document.getElementById('f-title').value = m.title;
+    if (m.description) document.getElementById('f-desc').value  = m.description;
+    if (m.image)       document.getElementById('f-img').value   = m.image;
+    if (!document.getElementById('f-slug').value && m.title) {
+      document.getElementById('f-slug').value = slugify(m.title);
+    }
+    updatePreview();
+    toast('ok', 'OG tags extraídos');
+  } catch (err) {
+    toast('err', `No se pudo extraer: ${err.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Extraer OG';
+  }
+}
+
+function slugify(s) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    .substring(0, 48);
+}
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+function onFormChange() { updatePreview(); }
+
+function updatePreview() {
+  const slug  = document.getElementById('f-slug').value  || 'subdominio';
+  const title = document.getElementById('f-title').value || 'Título del evento';
+  const desc  = document.getElementById('f-desc').value  || 'La descripción aparece aquí…';
+  const img   = document.getElementById('f-img').value;
+
+  document.getElementById('prev-domain').textContent = `${slug}.lippu.app`;
+  document.getElementById('prev-title').textContent  = title;
+  document.getElementById('prev-desc').textContent   = desc;
+
+  const wrap = document.getElementById('prev-img');
+  if (img) {
+    wrap.innerHTML = `<img src="${img}" class="wa-img" onerror="this.parentNode.innerHTML='<div class=wa-img-wrap>Imagen no accesible</div>'">`;
+  } else {
+    wrap.innerHTML = `<div class="wa-img-wrap">Sin imagen</div>`;
+  }
+}
+
+// ── Create event ──────────────────────────────────────────────────────────────
+async function createEvent() {
+  const slug  = document.getElementById('f-slug').value.trim();
+  const title = document.getElementById('f-title').value.trim();
+  const desc  = document.getElementById('f-desc').value.trim();
+  const img   = document.getElementById('f-img').value.trim();
+  const url   = document.getElementById('f-src').value.trim();
+
+  if (!slug)  { toast('err', 'El subdominio es requerido'); return; }
+  if (!title) { toast('err', 'El título es requerido'); return; }
+  if (!url)   { toast('err', 'La URL del evento es requerida'); return; }
+  if (!/^[a-z0-9-]+$/.test(slug)) { toast('err', 'El subdominio solo puede tener letras minúsculas, números y guiones'); return; }
+
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Creando…';
+  document.getElementById('modal-result').style.display = 'none';
+
+  try {
+    const r = await fetch(`${BASE}/api/manage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': getPw() },
+      body: JSON.stringify({ slug, subdomain: slug, title, description: desc, image: img, imageWidth: 1200, imageHeight: 630, url }),
+    });
+    const d = await r.json();
+
+    if (r.ok && d.success) {
+      const { results: res } = d;
+      const icon = v => v === 'ok' ? '✓' : v?.startsWith('skip') ? '○' : '✗';
+      const cls  = v => v === 'ok' ? 'ok-c' : v?.startsWith('skip') ? 'skip-c' : 'err-c';
+      const resEl = document.getElementById('modal-result');
+      resEl.style.display = 'block';
+      resEl.innerHTML = `
+        <div class="result-box">
+          <div class="ri ${cls(res.github)}">${icon(res.github)} GitHub / redeploy: ${res.github}</div>
+          <div class="ri ${cls(res.godaddy)}">${icon(res.godaddy)} GoDaddy CNAME: ${res.godaddy}</div>
+          <div class="ri ${cls(res.vercel)}">${icon(res.vercel)} Vercel dominio: ${res.vercel}</div>
+        </div>
+        <p class="note">
+          El evento <strong>${slug}.lippu.app</strong> estará activo en 2–5 min.<br>
+          Si algún paso fue "skipped", configura las variables de entorno en Vercel.
+        </p>`;
+      events.push({ slug, subdomain: slug, title, description: desc, image: img, url });
+      renderEvents();
+      btn.textContent = '✓ Creado';
+    } else {
+      toast('err', d.error || 'Error al crear el evento');
+      btn.disabled = false; btn.textContent = 'Crear evento';
+    }
+  } catch (err) {
+    toast('err', err.message);
+    btn.disabled = false; btn.textContent = 'Crear evento';
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(type, msg) {
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span>${type === 'ok' ? '✓' : '✗'}</span><span>${esc(msg)}</span>`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+</script>
+</body>
+</html>
