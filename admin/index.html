@@ -209,7 +209,7 @@
 
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" id="create-btn" onclick="createEvent()">Crear evento</button>
+        <button class="btn btn-primary" id="create-btn" onclick="submitEvent()">Crear evento</button>
       </div>
     </div>
 
@@ -444,7 +444,7 @@ function updatePreview() {
 }
 
 // ── Create event ──────────────────────────────────────────────────────────────
-async function createEvent() {
+async function submitEvent() {
   const slug  = document.getElementById('f-slug').value.trim();
   const title = document.getElementById('f-title').value.trim();
   const desc  = document.getElementById('f-desc').value.trim();
