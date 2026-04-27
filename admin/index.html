@@ -19,11 +19,11 @@
       --accent-h: #5254cc;
       --danger: #ef4444;
       --success: #22c55e;
-      --warn: #eab308;
       --mono: 'SF Mono','Fira Code','Cascadia Mono',monospace;
       --radius: 10px;
     }
 
+    *, body { background: inherit; }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; font-size: 14px; line-height: 1.5; }
 
     /* ── Gate ─────────────────────────────────────────────────────────── */
@@ -59,6 +59,7 @@
     .input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 13px; border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s; }
     .input:focus { border-color: var(--accent); }
     .input::placeholder { color: var(--muted); }
+    .input:disabled { opacity: .5; cursor: not-allowed; }
     .input.mono { font-family: var(--mono); }
     label { display: block; font-size: 11px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
     .fg { margin-bottom: 14px; }
@@ -73,10 +74,9 @@
     td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,.015); }
-    .mono-cell { font-family: var(--mono); font-size: 12px; }
     .subdomain-link { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 12px; }
     .subdomain-link:hover { text-decoration: underline; }
-    .url-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .url-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 11px; }
     .actions-cell { display: flex; gap: 6px; }
     .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .badge-ok { background: rgba(34,197,94,.12); color: var(--success); }
@@ -99,6 +99,8 @@
     .ri:last-child { margin-bottom: 0; }
     .ok-c { color: var(--success); } .err-c { color: var(--danger); } .skip-c { color: var(--muted); }
     .note { font-size: 12px; color: var(--muted2); margin-top: 10px; line-height: 1.6; }
+    .slug-readonly { font-family: var(--mono); font-size: 13px; color: var(--muted2); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; display: flex; align-items: center; gap: 4px; }
+    .slug-readonly span { color: var(--muted); }
 
     /* ── WhatsApp preview ─────────────────────────────────────────────── */
     .wa-bg { background: #0b141a; border-radius: 10px; padding: 14px; }
@@ -158,23 +160,24 @@
         <h2>Eventos activos</h2>
         <p id="events-meta"></p>
       </div>
-      <button class="btn btn-primary" onclick="openModal()">+ Nuevo evento</button>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Nuevo evento</button>
     </div>
     <div id="events-area"><div class="empty"><p>Cargando…</p></div></div>
   </main>
 </div>
 
-<!-- ── Modal ────────────────────────────────────────────────────────────── -->
+<!-- ── Modal (crear / editar) ───────────────────────────────────────────── -->
 <div class="overlay" id="modal" style="display:none" onclick="overlayClick(event)">
   <div class="modal">
 
     <div class="modal-body">
       <div class="modal-header">
-        <div class="modal-title">Nuevo evento</div>
+        <div class="modal-title" id="modal-title-text">Nuevo evento</div>
         <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
       </div>
 
-      <div class="fg">
+      <!-- URL origen + Extraer OG (solo en crear) -->
+      <div class="fg" id="fg-src">
         <label>URL del evento en lippu.app</label>
         <div class="row2">
           <input type="url" id="f-src" class="input" placeholder="https://lippu.app/eventwa/...">
@@ -182,12 +185,23 @@
         </div>
       </div>
 
-      <div class="fg">
+      <!-- Subdominio: editable al crear, readonly al editar -->
+      <div class="fg" id="fg-slug-edit">
         <label>Subdominio</label>
         <div class="slug-row">
           <input type="text" id="f-slug" class="input mono" placeholder="nombre-evento" oninput="onFormChange()">
           <span class="slug-suffix">.lippu.app</span>
         </div>
+      </div>
+      <div class="fg" id="fg-slug-readonly" style="display:none">
+        <label>Subdominio</label>
+        <div class="slug-readonly" id="slug-readonly-val">— <span>.lippu.app</span></div>
+      </div>
+
+      <!-- URL destino (visible al editar, oculta al crear ya que se usa f-src) -->
+      <div class="fg" id="fg-url-edit" style="display:none">
+        <label>URL destino en lippu.app</label>
+        <input type="url" id="f-url" class="input mono" placeholder="https://lippu.app/eventwa/..." oninput="onFormChange()">
       </div>
 
       <div class="fg">
@@ -201,7 +215,7 @@
       </div>
 
       <div class="fg">
-        <label>URL imagen OG <span style="font-weight:400;text-transform:none;letter-spacing:0">(recomendado 1200×630 px, accesible públicamente)</span></label>
+        <label>URL imagen OG <span style="font-weight:400;text-transform:none;letter-spacing:0">(recomendado 1200×630 px)</span></label>
         <input type="url" id="f-img" class="input mono" placeholder="https://…" oninput="onFormChange()">
       </div>
 
@@ -209,7 +223,7 @@
 
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" id="create-btn" onclick="submitEvent()">Crear evento</button>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitModal()">Crear evento</button>
       </div>
     </div>
 
@@ -233,7 +247,7 @@
           <li>SSL Vercel — 1 a 2 min</li>
           <li>Redeploy Vercel — 1 a 2 min</li>
           <li>Cache WhatsApp — hasta 24 h<br>
-            <a href="https://developers.facebook.com/tools/debug/" target="_blank">→ Forzar re-scrape (Facebook Debugger)</a>
+            <a href="https://developers.facebook.com/tools/debug/" target="_blank">→ Forzar re-scrape</a>
           </li>
         </ul>
       </div>
@@ -245,8 +259,10 @@
 <div id="toasts"></div>
 
 <script>
-// ── Config ────────────────────────────────────────────────────────────────────
-const BASE = '';  // mismo origen
+const BASE = '';
+let events = [];
+let modalMode = 'create'; // 'create' | 'edit'
+let editingSlug = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function getPw() { return sessionStorage.getItem('lp_pw') || ''; }
@@ -269,13 +285,9 @@ async function login() {
 }
 
 function logout() { sessionStorage.removeItem('lp_pw'); location.reload(); }
-
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  if (getPw()) showApp();
-});
+window.addEventListener('DOMContentLoaded', () => { if (getPw()) showApp(); });
 
 function showApp() {
   document.getElementById('gate').style.display = 'none';
@@ -283,9 +295,7 @@ function showApp() {
   loadEvents();
 }
 
-// ── Events list ───────────────────────────────────────────────────────────────
-let events = [];
-
+// ── Events ────────────────────────────────────────────────────────────────────
 async function loadEvents() {
   const area = document.getElementById('events-area');
   area.innerHTML = '<div class="empty"><p>Cargando…</p></div>';
@@ -298,7 +308,7 @@ async function loadEvents() {
     document.getElementById('events-meta').textContent =
       `${events.length} evento${events.length !== 1 ? 's' : ''} — lista del último deploy`;
   } catch (err) {
-    area.innerHTML = `<div class="empty"><p style="color:var(--danger)">Error cargando eventos: ${err.message}</p></div>`;
+    area.innerHTML = `<div class="empty"><p style="color:var(--danger)">Error: ${err.message}</p></div>`;
   }
 }
 
@@ -307,22 +317,14 @@ function reload() { loadEvents(); }
 function renderEvents() {
   const area = document.getElementById('events-area');
   if (!events.length) {
-    area.innerHTML = `
-      <div class="empty">
-        <p>No hay eventos configurados.</p>
-        <button class="btn btn-primary" onclick="openModal()">+ Crear primer evento</button>
-      </div>`;
+    area.innerHTML = `<div class="empty"><p>No hay eventos.</p><button class="btn btn-primary" onclick="openCreateModal()">+ Crear primer evento</button></div>`;
     return;
   }
   area.innerHTML = `
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Subdominio</th>
-          <th>Título</th>
-          <th>URL destino</th>
-          <th>Status</th>
-          <th>Acciones</th>
+          <th>Subdominio</th><th>Título</th><th>URL destino</th><th>Status</th><th>Acciones</th>
         </tr></thead>
         <tbody>
           ${events.map((e, i) => `
@@ -334,6 +336,7 @@ function renderEvents() {
               <td>
                 <div class="actions-cell">
                   <button class="btn btn-ghost btn-sm" onclick="copyLink(${i})">Copiar link</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openEditModal(${i})">Editar</button>
                   <button class="btn btn-danger btn-sm" onclick="delEvent(${i})">Eliminar</button>
                 </div>
               </td>
@@ -348,17 +351,16 @@ function esc(s) {
 }
 
 function copyLink(i) {
-  const url = `https://${events[i].slug}.lippu.app`;
-  navigator.clipboard.writeText(url).then(() => toast('ok', `Copiado: ${url}`));
+  navigator.clipboard.writeText(`https://${events[i].slug}.lippu.app`)
+    .then(() => toast('ok', `Copiado: ${events[i].slug}.lippu.app`));
 }
 
 async function delEvent(i) {
   const e = events[i];
-  if (!confirm(`¿Eliminar el evento "${e.title}"?\n\nEsto actualiza events.json vía GitHub y triggerea un redeploy.\nEl CNAME en GoDaddy deberás eliminarlo manualmente.`)) return;
+  if (!confirm(`¿Eliminar "${e.title}"?\n\nSe actualiza events.json vía GitHub y triggerea redeploy.\nEl CNAME en GoDaddy debes eliminarlo manualmente.`)) return;
   try {
     const r = await fetch(`${BASE}/api/manage?slug=${e.slug}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-password': getPw() },
+      method: 'DELETE', headers: { 'x-admin-password': getPw() },
     });
     const d = await r.json();
     if (r.ok) {
@@ -368,25 +370,58 @@ async function delEvent(i) {
     } else {
       toast('err', d.error || 'Error al eliminar');
     }
-  } catch (err) {
-    toast('err', err.message);
-  }
+  } catch (err) { toast('err', err.message); }
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function openModal() {
-  resetModal();
+function openCreateModal() {
+  modalMode = 'create';
+  editingSlug = null;
+  clearForm();
+  // Mostrar campos de crear, ocultar los de editar
+  document.getElementById('fg-src').style.display = '';
+  document.getElementById('fg-slug-edit').style.display = '';
+  document.getElementById('fg-slug-readonly').style.display = 'none';
+  document.getElementById('fg-url-edit').style.display = 'none';
+  document.getElementById('modal-title-text').textContent = 'Nuevo evento';
+  document.getElementById('submit-btn').textContent = 'Crear evento';
   document.getElementById('modal').style.display = 'flex';
   document.getElementById('f-src').focus();
 }
+
+function openEditModal(i) {
+  const e = events[i];
+  modalMode = 'edit';
+  editingSlug = e.slug;
+  clearForm();
+  // Mostrar campos de editar, ocultar los de crear
+  document.getElementById('fg-src').style.display = 'none';
+  document.getElementById('fg-slug-edit').style.display = 'none';
+  document.getElementById('fg-slug-readonly').style.display = '';
+  document.getElementById('fg-url-edit').style.display = '';
+  document.getElementById('slug-readonly-val').innerHTML = `${esc(e.slug)}<span>.lippu.app</span>`;
+  // Pre-llenar campos
+  document.getElementById('f-url').value   = e.url         || '';
+  document.getElementById('f-title').value = e.title       || '';
+  document.getElementById('f-desc').value  = e.description || '';
+  document.getElementById('f-img').value   = e.image       || '';
+  document.getElementById('modal-title-text').textContent = `Editar — ${e.slug}`;
+  document.getElementById('submit-btn').textContent = 'Guardar cambios';
+  updatePreview();
+  document.getElementById('modal').style.display = 'flex';
+  document.getElementById('f-title').focus();
+}
+
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
 function overlayClick(e) { if (e.target === document.getElementById('modal')) closeModal(); }
 
-function resetModal() {
-  ['f-src','f-slug','f-title','f-desc','f-img'].forEach(id => { document.getElementById(id).value = ''; });
+function clearForm() {
+  ['f-src','f-slug','f-title','f-desc','f-img','f-url'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
   document.getElementById('modal-result').style.display = 'none';
-  const btn = document.getElementById('create-btn');
-  btn.disabled = false; btn.textContent = 'Crear evento';
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
   updatePreview();
 }
 
@@ -426,7 +461,7 @@ function slugify(s) {
 function onFormChange() { updatePreview(); }
 
 function updatePreview() {
-  const slug  = document.getElementById('f-slug').value  || 'subdominio';
+  const slug  = (modalMode === 'edit' ? editingSlug : document.getElementById('f-slug').value) || 'subdominio';
   const title = document.getElementById('f-title').value || 'Título del evento';
   const desc  = document.getElementById('f-desc').value  || 'La descripción aparece aquí…';
   const img   = document.getElementById('f-img').value;
@@ -443,8 +478,16 @@ function updatePreview() {
   }
 }
 
-// ── Create event ──────────────────────────────────────────────────────────────
-async function submitEvent() {
+// ── Submit (crear o editar) ───────────────────────────────────────────────────
+async function submitModal() {
+  if (modalMode === 'edit') {
+    await saveEdit();
+  } else {
+    await submitNewEvent();
+  }
+}
+
+async function submitNewEvent() {
   const slug  = document.getElementById('f-slug').value.trim();
   const title = document.getElementById('f-title').value.trim();
   const desc  = document.getElementById('f-desc').value.trim();
@@ -454,9 +497,9 @@ async function submitEvent() {
   if (!slug)  { toast('err', 'El subdominio es requerido'); return; }
   if (!title) { toast('err', 'El título es requerido'); return; }
   if (!url)   { toast('err', 'La URL del evento es requerida'); return; }
-  if (!/^[a-z0-9-]+$/.test(slug)) { toast('err', 'El subdominio solo puede tener letras minúsculas, números y guiones'); return; }
+  if (!/^[a-z0-9-]+$/.test(slug)) { toast('err', 'Subdominio: solo minúsculas, números y guiones'); return; }
 
-  const btn = document.getElementById('create-btn');
+  const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Creando…';
   document.getElementById('modal-result').style.display = 'none';
@@ -470,31 +513,73 @@ async function submitEvent() {
     const d = await r.json();
 
     if (r.ok && d.success) {
-      const { results: res } = d;
-      const icon = v => v === 'ok' ? '✓' : v?.startsWith('skip') ? '○' : '✗';
-      const cls  = v => v === 'ok' ? 'ok-c' : v?.startsWith('skip') ? 'skip-c' : 'err-c';
+      const res = d.results;
+      const icon = v => v === 'ok' ? '✓' : (v || '').startsWith('skip') ? '○' : '✗';
+      const cls  = v => v === 'ok' ? 'ok-c' : (v || '').startsWith('skip') ? 'skip-c' : 'err-c';
       const resEl = document.getElementById('modal-result');
       resEl.style.display = 'block';
       resEl.innerHTML = `
         <div class="result-box">
-          <div class="ri ${cls(res.github)}">${icon(res.github)} GitHub / redeploy: ${res.github}</div>
-          <div class="ri ${cls(res.godaddy)}">${icon(res.godaddy)} GoDaddy CNAME: ${res.godaddy}</div>
-          <div class="ri ${cls(res.vercel)}">${icon(res.vercel)} Vercel dominio: ${res.vercel}</div>
+          <div class="ri ${cls(res.github)}">${icon(res.github)} GitHub / redeploy: ${esc(res.github)}</div>
+          <div class="ri ${cls(res.godaddy)}">${icon(res.godaddy)} GoDaddy CNAME: ${esc(res.godaddy)}</div>
+          <div class="ri ${cls(res.vercel)}">${icon(res.vercel)} Vercel dominio: ${esc(res.vercel)}</div>
         </div>
-        <p class="note">
-          El evento <strong>${slug}.lippu.app</strong> estará activo en 2–5 min.<br>
-          Si algún paso fue "skipped", configura las variables de entorno en Vercel.
-        </p>`;
+        <p class="note"><strong>${slug}.lippu.app</strong> estará activo en 2–5 min.</p>`;
       events.push({ slug, subdomain: slug, title, description: desc, image: img, url });
       renderEvents();
       btn.textContent = '✓ Creado';
     } else {
-      toast('err', d.error || 'Error al crear el evento');
+      toast('err', d.error || 'Error al crear');
       btn.disabled = false; btn.textContent = 'Crear evento';
     }
   } catch (err) {
     toast('err', err.message);
     btn.disabled = false; btn.textContent = 'Crear evento';
+  }
+}
+
+async function saveEdit() {
+  const title = document.getElementById('f-title').value.trim();
+  const desc  = document.getElementById('f-desc').value.trim();
+  const img   = document.getElementById('f-img').value.trim();
+  const url   = document.getElementById('f-url').value.trim();
+
+  if (!title) { toast('err', 'El título es requerido'); return; }
+  if (!url)   { toast('err', 'La URL destino es requerida'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Guardando…';
+  document.getElementById('modal-result').style.display = 'none';
+
+  try {
+    const r = await fetch(`${BASE}/api/manage`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': getPw() },
+      body: JSON.stringify({ slug: editingSlug, title, description: desc, image: img, imageWidth: 1200, imageHeight: 630, url }),
+    });
+    const d = await r.json();
+
+    if (r.ok && d.success) {
+      // Update local data
+      const idx = events.findIndex(e => e.slug === editingSlug);
+      if (idx !== -1) events[idx] = { ...events[idx], title, description: desc, image: img, url };
+      renderEvents();
+      const resEl = document.getElementById('modal-result');
+      resEl.style.display = 'block';
+      resEl.innerHTML = `
+        <div class="result-box">
+          <div class="ri ok-c">✓ Guardado en GitHub — redeploy automático en ~1 min</div>
+        </div>
+        <p class="note">Los cambios en título, descripción e imagen se reflejarán después del redeploy.</p>`;
+      btn.textContent = '✓ Guardado';
+    } else {
+      toast('err', d.error || 'Error al guardar');
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+    }
+  } catch (err) {
+    toast('err', err.message);
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
   }
 }
 
