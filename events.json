@@ -68,5 +68,15 @@
     "imageWidth": 1200,
     "imageHeight": 630,
     "url": "https://lippu.app/eventwa/1780269246472x277333660940369920?uniq=1780269246472x277333660940369920"
+  },
+  {
+    "slug": "beat803",
+    "subdomain": "beat803",
+    "title": "Lippu | BEAT 803",
+    "description": "Lippu es la plataforma de ticketing que conecta comunidades. Gestiona tus eventos de forma sencilla y descubre experiencias únicas.",
+    "image": "https://8dbd0d43b3a9a42f30202af2bdde13f8.cdn.bubble.io/cdn-cgi/image/w=,h=,f=auto,dpr=1,fit=contain/f1780270085968x802971142932549600/1000766036.jpg",
+    "imageWidth": 1200,
+    "imageHeight": 630,
+    "url": "https://lippu.app/cartelera/beat-803-1779808443705x818639784159415600"
   }
 ]
